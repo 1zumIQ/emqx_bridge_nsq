@@ -151,7 +151,7 @@ on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
 %%     {ok, Message}.
 
 on_message_publish(Message, _Env) ->
-    io:format("Publish ~s~n", [emqx_message:format(Message)]),
+    %%io:format("Publish ~s~n", [emqx_message:format(Message)]),
     {ok, KafkaTopic} = application:get_env(emqx_bridge_kafka, values),
     ProduceTopic = proplists:get_value(kafka_producer_topic, KafkaTopic),
     %%Topic=Message#message.topic,
@@ -164,8 +164,8 @@ on_message_publish(Message, _Env) ->
             %%,{cluster_node,node()}
             %% ,{ts,emqx_time:now_to_secs(Timestamp)}
     %%]),
-    %%ekaf:produce_async(ProduceTopic, Json),
-    ekaf:produce_async(ProduceTopic, Message),
+    Json = jsx:encode([emqx_message:format(Message)]),
+    ekaf:produce_async(ProduceTopic, Json),
     %%ekaf:produce_async(Topic, Payload),
     {ok, Message}.
 
