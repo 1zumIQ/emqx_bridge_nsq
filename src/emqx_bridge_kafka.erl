@@ -154,17 +154,18 @@ on_message_publish(Message, _Env) ->
     %%io:format("Publish ~s~n", [emqx_message:format(Message)]),
     {ok, KafkaTopic} = application:get_env(emqx_bridge_kafka, values),
     ProduceTopic = proplists:get_value(kafka_producer_topic, KafkaTopic),
-    %%Topic=Message#message.topic,
-    %%Payload=Message#message.payload,
-    %%Timestamp=Message#message.timestamp,
-    %%Json = jsx:encode([
-            %%{type,<<"published">>},
-            %%{topic,Topic},
-            %%{payload,Payload}
+    Topic=Message#message.topic,
+    From=Message#message.from,
+    Payload=Message#message.payload,
+    Timestamp=Message#message.timestamp,
+    Json = jsx:encode([
+            {type,<<"published">>},
+            {topic,Topic},
+            {from,From},
+            {payload,Payload}
             %%,{cluster_node,node()}
-            %% ,{ts,emqx_time:now_to_secs(Timestamp)}
-    %%]),
-    Json = jsx:encode([emqx_message:format(Message)]),
+            ,{ts,emqx_time:now_to_secs(Timestamp)}
+    ]),
     ekaf:produce_async(ProduceTopic, Json),
     %%ekaf:produce_async(Topic, Payload),
     {ok, Message}.
