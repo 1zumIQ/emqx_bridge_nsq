@@ -156,18 +156,16 @@ on_message_publish(Message, _Env) ->
     ProduceTopic = proplists:get_value(kafka_producer_topic, KafkaTopic),
     Topic=Message#message.topic,
     Payload=Message#message.payload,
-    Qos=Message#message.qos,
     %% Timestamp=Message#message.timestamp,
     Json = jsx:encode([
             {type,<<"published">>},
             {topic,Topic},
-            {payload,Payload},
-            {qos,Qos},
-            {cluster_node,node()}
+            {payload,Payload}
+            %%,{cluster_node,node()}
             %% ,{ts,emqx_time:now_to_secs(Timestamp)}
     ]),
-    %% ekaf:produce_async(ProduceTopic, Json),
-    ekaf:produce_async(Topic, Payload),
+    ekaf:produce_async(ProduceTopic, Json),
+    %% ekaf:produce_async(Topic, Payload),
     {ok, Message}.
 
 
