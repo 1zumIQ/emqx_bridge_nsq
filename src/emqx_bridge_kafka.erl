@@ -23,10 +23,10 @@
         ]).
 
 %% Client Lifecircle Hooks
--export([ on_client_connect/3
-        , on_client_connack/4
+-export([ on_client_disconnected/4
         , on_client_connected/3
-        , on_client_disconnected/4
+%         , on_client_connect/3
+%         , on_client_connack/4
         , on_client_authenticate/3
         , on_client_check_acl/5
 %         , on_client_subscribe/4
