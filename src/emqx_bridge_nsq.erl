@@ -167,7 +167,7 @@ on_message_publish(Message, _Env) ->
             {ts,Timestamp}
     ]),
     % ensq:produce_async(ProduceTopic, Json),
-    ensq:send(ProduceTopic, <<"Hello, NSQ!">>)
+    ensq:send(ProduceTopic, <<"Hello, NSQ!">>),
     %%ensq:produce_async(Topic, Payload),
     {ok, Message}.
 
