@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emqx_bridge_kafka).
+-module(emqx_bridge_nsq).
 
 -include_lib("emqx/include/emqx.hrl").
 
@@ -52,7 +52,7 @@
 
 %% Called when the plugin application start
 load(Env) ->
-    ekaf_init([Env]),
+    ensq_init([Env]),
 %     emqx:hook('client.connect',      {?MODULE, on_client_connect, [Env]}),
 %     emqx:hook('client.connack',      {?MODULE, on_client_connack, [Env]}),
     emqx:hook('client.connected',    {?MODULE, on_client_connected, [Env]}),
@@ -152,8 +152,8 @@ on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
 
 on_message_publish(Message, _Env) ->
     %%io:format("Publish ~s~n", [emqx_message:format(Message)]),
-    {ok, KafkaTopic} = application:get_env(emqx_bridge_kafka, values),
-    ProduceTopic = proplists:get_value(kafka_producer_topic, KafkaTopic),
+    {ok, nsqTopic} = application:get_env(emqx_bridge_nsq, values),
+    ProduceTopic = proplists:get_value(nsq_producer_topic, nsqTopic),
     Topic=Message#message.topic,
     From=Message#message.from,
     Payload=Message#message.payload,
@@ -166,8 +166,9 @@ on_message_publish(Message, _Env) ->
             %%,{cluster_node,node()}
             {ts,Timestamp}
     ]),
-    ekaf:produce_async(ProduceTopic, Json),
-    %%ekaf:produce_async(Topic, Payload),
+    % ensq:produce_async(ProduceTopic, Json),
+    ensq:send(ProduceTopic, <<"Hello, NSQ!">>)
+    %%ensq:produce_async(Topic, Payload),
     {ok, Message}.
 
 
@@ -208,13 +209,15 @@ unload() ->
 %     emqx:unhook('message.acked',       {?MODULE, on_message_acked}),
 %     emqx:unhook('message.dropped',     {?MODULE, on_message_dropped}).
 
-%% Init kafka server parameters
-ekaf_init(_Env) ->
-    application:load(ekaf),
-    {ok, Values} = application:get_env(emqx_bridge_kafka, values),
+%% Init nsq server parameters
+ensq_init(_Env) ->
+    ensq:start(),
+    {ok, Values} = application:get_env(emqx_bridge_nsq, values),
     BootstrapBroker = proplists:get_value(bootstrap_broker, Values),
-    PartitionStrategy= proplists:get_value(partition_strategy, Values),
-    application:set_env(ekaf, ekaf_partition_strategy, PartitionStrategy),
-    application:set_env(ekaf, ekaf_bootstrap_broker, BootstrapBroker),
-    {ok, _} = application:ensure_all_started(ekaf),
-    io:format("Initialized ekaf with ~p~n", [BootstrapBroker]).        
+    % PartitionStrategy= proplists:get_value(partition_strategy, Values),
+
+    DiscoveryServers = [{"localhost", 4161}],
+    ensq:init(DiscoveryServers, <<"test">>),
+
+    {ok, _} = application:ensure_all_started(ensq),
+    io:format("Initialized ensq with ~p~n", [BootstrapBroker]).        

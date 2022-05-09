@@ -1,0 +1,14 @@
+{application, emqx_bridge_nsq,
+ [{description, "EMQ X Bridge to NSQ Broker"},
+  {vsn, "git"},
+  {modules, []},
+  {registered, [emqx_bridge_nsq_sup]},
+  {applications, [kernel, stdlib, ensq]},
+  {mod, {emqx_bridge_nsq_app,[]}},
+  {env, []},
+  {licenses, ["Apache-2.0"]},
+  {maintainers, ["EMQ X Team <contact@emqx.io>"]},
+  {links, [{"Homepage", "https://emqx.io/"},
+           {"Github", "https://github.com/emqx/emqx_bridge_nsq"}
+          ]}
+ ]}.
