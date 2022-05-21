@@ -2,10 +2,13 @@ emqx_bridge_nsq
 ====================
 
 EMQX的NSQ桥接插件  
-基于4.2.14版本的EMQX进行开发  
+基于4.2.14版本的[EMQX][emqx]和[ENSQ][ensq]进行开发  
 
 This is a  plugin for the EMQ X broker and nsq.  
-Develop based on EMQX(version 4.2.14)
+Develop based on [EMQX][emqx](version 4.2.14) and [ENSQ][ensq]
+
+[emqx]:https://github.com/emqx/emqx-rel/tree/v4.2.14
+[ensq]:https://github.com/project-fifo/ensq
 
 Plugin Config
 -------------
