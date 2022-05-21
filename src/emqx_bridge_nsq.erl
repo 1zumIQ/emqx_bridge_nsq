@@ -24,11 +24,11 @@
 
 %% Client Lifecircle Hooks
 -export([ on_client_disconnected/4
-        , on_client_connected/3
+        % , on_client_connected/3
 %         , on_client_connect/3
 %         , on_client_connack/4
-        , on_client_authenticate/3
-        , on_client_check_acl/5
+        % , on_client_authenticate/3
+        % , on_client_check_acl/5
 %         , on_client_subscribe/4
 %         , on_client_unsubscribe/4
         ]).
@@ -55,10 +55,10 @@ load(Env) ->
     ensq_init([Env]),
 %     emqx:hook('client.connect',      {?MODULE, on_client_connect, [Env]}),
 %     emqx:hook('client.connack',      {?MODULE, on_client_connack, [Env]}),
-    emqx:hook('client.connected',    {?MODULE, on_client_connected, [Env]}),
+    % emqx:hook('client.connected',    {?MODULE, on_client_connected, [Env]}),
     emqx:hook('client.disconnected', {?MODULE, on_client_disconnected, [Env]}),
-    emqx:hook('client.authenticate', {?MODULE, on_client_authenticate, [Env]}),
-    emqx:hook('client.check_acl',    {?MODULE, on_client_check_acl, [Env]}),
+    % emqx:hook('client.authenticate', {?MODULE, on_client_authenticate, [Env]}),
+    % emqx:hook('client.check_acl',    {?MODULE, on_client_check_acl, [Env]}),
 %     emqx:hook('client.subscribe',    {?MODULE, on_client_subscribe, [Env]}),
 %     emqx:hook('client.unsubscribe',  {?MODULE, on_client_unsubscribe, [Env]}),
 %     emqx:hook('session.created',     {?MODULE, on_session_created, [Env]}),
@@ -87,22 +87,33 @@ load(Env) ->
 %               [ClientId, ConnInfo, Rc, Props]),
 %     {ok, Props}.
 
-on_client_connected(ClientInfo = #{clientid := ClientId}, ConnInfo, _Env) ->
-    io:format("Client(~s) connected, ClientInfo:~n~p~n, ConnInfo:~n~p~n",
-              [ClientId, ClientInfo, ConnInfo]).
+% on_client_connected(ClientInfo = #{clientid := ClientId}, ConnInfo, _Env) ->
+%     io:format("Client(~s) connected, ClientInfo:~n~p~n, ConnInfo:~n~p~n",
+%               [ClientId, ClientInfo, ConnInfo]).
 
 on_client_disconnected(ClientInfo = #{clientid := ClientId}, ReasonCode, ConnInfo, _Env) ->
     io:format("Client(~s) disconnected due to ~p, ClientInfo:~n~p~n, ConnInfo:~n~p~n",
-              [ClientId, ReasonCode, ClientInfo, ConnInfo]).
+        [ClientId, ReasonCode, ClientInfo, ConnInfo]),
+    {ok, NsqTopic} = application:get_env(emqx_bridge_nsq, values),
+    ProduceTopic = proplists:get_value(nsq_producer_topic2, NsqTopic),
+    Action = <<"disconnected">>,
+    Json = jsx:encode([
+        {type, Action}, 
+        {device_id, ClientId}, 
+        {username, maps:get(username, ClientInfo)},
+        {reason, ReasonCode}
+    ]),
+    ensq:send(ProduceTopic, Json).
 
-on_client_authenticate(_ClientInfo = #{clientid := ClientId}, Result, _Env) ->
-    io:format("Client(~s) authenticate, Result:~n~p~n", [ClientId, Result]),
-    {ok, Result}.
 
-on_client_check_acl(_ClientInfo = #{clientid := ClientId}, Topic, PubSub, Result, _Env) ->
-    io:format("Client(~s) check_acl, PubSub:~p, Topic:~p, Result:~p~n",
-              [ClientId, PubSub, Topic, Result]),
-    {ok, Result}.
+% on_client_authenticate(_ClientInfo = #{clientid := ClientId}, Result, _Env) ->
+%     io:format("Client(~s) authenticate, Result:~n~p~n", [ClientId, Result]),
+%     {ok, Result}.
+
+% on_client_check_acl(_ClientInfo = #{clientid := ClientId}, Topic, PubSub, Result, _Env) ->
+%     io:format("Client(~s) check_acl, PubSub:~p, Topic:~p, Result:~p~n",
+%               [ClientId, PubSub, Topic, Result]),
+%     {ok, Result}.
 
 % on_client_subscribe(#{clientid := ClientId}, _Properties, TopicFilters, _Env) ->
 %     io:format("Client(~s) will subscribe: ~p~n", [ClientId, TopicFilters]),
@@ -152,22 +163,21 @@ on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
 
 on_message_publish(Message, _Env) ->
     %%io:format("Publish ~s~n", [emqx_message:format(Message)]),
-    {ok, nsqTopic} = application:get_env(emqx_bridge_nsq, values),
-    ProduceTopic = proplists:get_value(nsq_producer_topic, nsqTopic),
+    {ok, NsqTopic} = application:get_env(emqx_bridge_nsq, values),
+    ProduceTopic = proplists:get_value(nsq_producer_topic, NsqTopic),
     Topic=Message#message.topic,
     From=Message#message.from,
     Payload=Message#message.payload,
     Timestamp=Message#message.timestamp,
     Json = jsx:encode([
             {type,<<"published">>},
-            {topic,Topic},
+            {topic, Topic},
             {from,From},
-            {payload,Payload},
+            {payload, Payload}
             %%,{cluster_node,node()}
-            {ts,Timestamp}
     ]),
     % ensq:produce_async(ProduceTopic, Json),
-    ensq:send(ProduceTopic, <<"Hello, NSQ!">>),
+    ensq:send(ProduceTopic, Json),
     %%ensq:produce_async(Topic, Payload),
     {ok, Message}.
 
@@ -191,10 +201,10 @@ on_message_publish(Message, _Env) ->
 unload() ->
 %     emqx:unhook('client.connect',      {?MODULE, on_client_connect}),
 %     emqx:unhook('client.connack',      {?MODULE, on_client_connack}),
-    emqx:unhook('client.connected',    {?MODULE, on_client_connected}),
+%    emqx:unhook('client.connected',    {?MODULE, on_client_connected}),
     emqx:unhook('client.disconnected', {?MODULE, on_client_disconnected}),
-    emqx:unhook('client.authenticate', {?MODULE, on_client_authenticate}),
-    emqx:unhook('client.check_acl',    {?MODULE, on_client_check_acl}),
+    % emqx:unhook('client.authenticate', {?MODULE, on_client_authenticate}),
+    % emqx:unhook('client.check_acl',    {?MODULE, on_client_check_acl}),
 %     emqx:unhook('client.subscribe',    {?MODULE, on_client_subscribe}),
 %     emqx:unhook('client.unsubscribe',  {?MODULE, on_client_unsubscribe}),
 %     emqx:unhook('session.created',     {?MODULE, on_session_created}),
@@ -214,10 +224,28 @@ ensq_init(_Env) ->
     ensq:start(),
     {ok, Values} = application:get_env(emqx_bridge_nsq, values),
     BootstrapBroker = proplists:get_value(bootstrap_broker, Values),
-    % PartitionStrategy= proplists:get_value(partition_strategy, Values),
+    Nsq_producer_topic= proplists:get_value(nsq_producer_topic, Values),
+    Nsq_producer_topic2= proplists:get_value(nsq_producer_topic2, Values),
+    DiscoveryServers = [{BootstrapBroker, 4161}],
+    % Channels = [{
+    %     <<"test-channel">>,         %% Channel name
+    %     ensq_debug_callback     %% 预定义的调试模块
+    % }],
+    % ensq:init({DiscoveryServers, {<<"test">>,<<"test-channel">>}}),
 
-    DiscoveryServers = [{"localhost", 4161}],
-    ensq:init(DiscoveryServers, <<"test">>),
+    ensq_topic:discover(
+        Nsq_producer_topic,                               %% Topic
+        DiscoveryServers,                       %% Discovery servers to use
+        [],                               %% Channels to join.
+        [{BootstrapBroker, 4150}]
+    ),
+    ensq_topic:discover(
+        Nsq_producer_topic2,                               %% Topic
+        DiscoveryServers,                       %% Discovery servers to use
+        [],                               %% Channels to join.
+        [{BootstrapBroker, 4150}]
+    ),
+
 
     {ok, _} = application:ensure_all_started(ensq),
-    io:format("Initialized ensq with ~p~n", [BootstrapBroker]).        
+    io:format("Initialized ensq with ~p~n", [BootstrapBroker]).     
